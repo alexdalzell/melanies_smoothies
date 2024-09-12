@@ -3,7 +3,8 @@ import streamlit as st
 from snowflake.snowpark.functions import col
 import requests
 
-fruityvice_response = requests.get("https://fruityvice.com/api/fruit/watermelon")
+cnx = st.connection("snowflake")
+session = cnx.session()
 
 # Write directly to the app
 st.title("Customise Your Smoothie! :cup_with_straw:")
@@ -16,11 +17,7 @@ st.write(
 name = st.text_input('Name on Smoothie', 'Name')
 st.write('The name on your Smoothie will be', name)
 
-cnx = st.connection("snowflake")
-session = cnx.session()
-
 my_dataframe = session.table("smoothies.public.fruit_options").select(col('FRUIT_NAME'))
-# st.dataframe(data=my_dataframe, use_container_width=True)
 
 ingredients_list = st.multiselect(
     'Choose up to 5 ingredients:',
@@ -29,13 +26,11 @@ ingredients_list = st.multiselect(
 )
 
 if ingredients_list:
-
     ingredients_string = ''
-
     for fruit_chosen in ingredients_list:
         ingredients_string += fruit_chosen + ' '
-
-    # st.write(ingredients_string)
+        fruityvice_response = requests.get("https://fruityvice.com/api/fruit/watermelon")
+        fv_df = st.dataframe(data=fruityvice_response.json(), use_container_width = True)
 
     my_insert_stmt = """ insert into smoothies.public.orders(ingredients, name_on_order)
                 values ('""" + ingredients_string + """', '""" + name + """')"""
@@ -47,8 +42,7 @@ if ingredients_list:
         session.sql(my_insert_stmt).collect()
         st.success('Thanks ' + name + ', your smoothie is ordered!', icon="✅")
 
-# st.text(fruityvice_response.json())'
-fv_df = st.dataframe(data=fruityvice_response.json(), use_container_width = True)
+
 
 
 
